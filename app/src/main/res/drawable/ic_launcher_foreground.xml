@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Keyboard Base Shape -->
+    <path
+        android:pathData="M28,38 h52 a10,10 0 0 1 10,10 v26 a10,10 0 0 1 -10,10 h-52 a10,10 0 0 1 -10,-10 v-26 a10,10 0 0 1 10,-10 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="28"
+                android:startY="38"
+                android:endX="90"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#4F46E5" />
+                <item android:offset="1.0" android:color="#006A79" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Key Dots / Rectangles -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,48 h6 v6 h-6 z M42,48 h6 v6 h-6 z M52,48 h6 v6 h-6 z M62,48 h6 v6 h-6 z M72,48 h6 v6 h-6 z" />
+    <path
+        android:fillColor="#E2DFFF"
+        android:pathData="M36,58 h6 v6 h-6 z M46,58 h6 v6 h-6 z M56,58 h6 v6 h-6 z M66,58 h6 v6 h-6 z" />
+    <path
+        android:fillColor="#2FD9F4"
+        android:pathData="M42,68 h24 v5 h-24 z" />
+
+    <!-- AI Sparkle on Top-Right -->
+    <path
+        android:fillColor="#2FD9F4"
+        android:pathData="M78,24 L80,30 L86,32 L80,34 L78,40 L76,34 L70,32 L76,30 Z" />
+    <path
+        android:fillColor="#A2EEFF"
+        android:pathData="M88,38 L89,41 L92,42 L89,43 L88,46 L87,43 L84,42 L87,41 Z" />
+</vector>

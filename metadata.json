@@ -1,0 +1,8 @@
+{
+  "name": "AI Keyboard",
+  "description": "Production-grade, modular AI-native Android keyboard platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
