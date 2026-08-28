@@ -666,12 +666,13 @@ fun AuraKeyboardView(
                             themePalette = themePalette,
                             searchQuery = gifSearchQuery,
                             onQueryChange = { gifSearchQuery = it },
-                            onSelectGif = { gif ->
-                                onCommitRichContent?.let { commit ->
-                                    val uri = Uri.parse(gif.mediaUrl)
-                                    val success = commit(uri, "image/gif", gif.title, gif.mediaUrl)
-                                    if (!success) onKeyChar(gif.previewEmoji)
-                                } ?: onKeyChar(gif.previewEmoji)
+                            onSelectGif = { item ->
+                                val mediaUrl = item.resolveDirectMediaUrl(preferSmall = false)
+                                val title = item.title ?: "KLIPY GIF"
+                                val committed = onCommitRichContent?.invoke(Uri.parse(mediaUrl), "image/gif", title, mediaUrl) ?: false
+                                if (!committed && mediaUrl.isNotBlank()) {
+                                    onKeyChar(mediaUrl)
+                                }
                                 onModeChange(KeyboardMode.NORMAL_MODE)
                             },
                             onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
@@ -683,12 +684,13 @@ fun AuraKeyboardView(
                             themePalette = themePalette,
                             searchQuery = stickerSearchQuery,
                             onQueryChange = { stickerSearchQuery = it },
-                            onSelectSticker = { sticker ->
-                                onCommitRichContent?.let { commit ->
-                                    val uri = Uri.parse(sticker.imageUrl.ifEmpty { "https://api.dicebear.com/7.x/bottts/png?seed=${sticker.name}" })
-                                    val success = commit(uri, "image/png", sticker.name, sticker.imageUrl)
-                                    if (!success) onKeyChar(sticker.emoji)
-                                } ?: onKeyChar(sticker.emoji)
+                            onSelectSticker = { item ->
+                                val mediaUrl = item.resolveDirectMediaUrl(preferSmall = false)
+                                val title = item.title ?: "KLIPY Sticker"
+                                val committed = onCommitRichContent?.invoke(Uri.parse(mediaUrl), "image/webp", title, mediaUrl) ?: false
+                                if (!committed && mediaUrl.isNotBlank()) {
+                                    onKeyChar(mediaUrl)
+                                }
                                 onModeChange(KeyboardMode.NORMAL_MODE)
                             },
                             onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
