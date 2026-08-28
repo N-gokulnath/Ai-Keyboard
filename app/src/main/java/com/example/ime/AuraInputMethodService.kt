@@ -39,13 +39,16 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import androidx.lifecycle.lifecycleScope
 import com.example.MainActivity
 import com.example.data.KeyboardRepository
+import com.example.data.klipy.KlipyMediaItem
 import com.example.ime.engine.AospDictionary
 import com.example.ime.engine.KeyAction
 import com.example.ime.engine.KeyboardFeedbackHelper
 import com.example.ime.engine.KeyboardLayouts
 import com.example.ime.engine.KeyboardMode
+import com.example.ime.engine.RichContentHelper
 import com.example.ime.engine.ShiftState
 import com.example.ime.ui.AuraKeyboardView
 import com.example.ime.ui.KeyboardThemePalette
@@ -117,11 +120,20 @@ class AuraInputMethodService : InputMethodService(), LifecycleOwner, ViewModelSt
         val gestures = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
 
         val bottomPx = maxOf(navBars.bottom, sysBars.bottom, tappable.bottom, gestures.bottom)
-        if (bottomPx > 0) {
-            val calculatedDp = (bottomPx / density).dp
-            if (systemBottomInsetDp != calculatedDp) {
-                systemBottomInsetDp = calculatedDp
-            }
+        val calculatedDp = if (bottomPx > 0) (bottomPx / density).dp else 16.dp
+        val finalDp = maxOf(calculatedDp, 16.dp)
+        if (systemBottomInsetDp != finalDp) {
+            systemBottomInsetDp = finalDp
+        }
+    }
+
+    override fun onComputeInsets(outInsets: Insets) {
+        super.onComputeInsets(outInsets)
+        if (window?.window != null) {
+            val decorView = window.window!!.decorView
+            outInsets.contentTopInsets = decorView.height
+            outInsets.visibleTopInsets = decorView.height
+            outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_FRAME
         }
     }
 
@@ -234,6 +246,15 @@ class AuraInputMethodService : InputMethodService(), LifecycleOwner, ViewModelSt
                         onCommitRichContent = { uri, mimeType, desc, linkUri ->
                             handleCommitRichContent(uri, mimeType, desc, linkUri)
                         },
+                        onCommitKlipyMedia = { mediaItem ->
+                            RichContentHelper.commitKlipyMedia(
+                                context = this@AuraInputMethodService,
+                                scope = lifecycleScope,
+                                inputConnection = currentInputConnection,
+                                editorInfo = currentInputEditorInfo,
+                                mediaItem = mediaItem
+                            )
+                        },
                         onDpadMove = { keyCode ->
                             feedbackHelper.playKeyClick(settings.soundOnKeypress)
                             feedbackHelper.vibrate(settings.hapticFeedback, settings.vibrationDurationMs)
@@ -256,6 +277,9 @@ class AuraInputMethodService : InputMethodService(), LifecycleOwner, ViewModelSt
                         },
                         onHeightScaleChange = { scale ->
                             repository.updateSettings(settings.copy(keyboardHeightScale = scale))
+                        },
+                        onDismiss = {
+                            requestHideSelf(0)
                         }
                     )
                 }

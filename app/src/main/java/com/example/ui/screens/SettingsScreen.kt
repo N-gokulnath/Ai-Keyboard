@@ -104,7 +104,7 @@ enum class SettingsFolder(val label: String, val icon: ImageVector) {
     APPEARANCE("Appearance", Icons.Default.Palette),
     KEYBOARD("Keyboard", Icons.Default.Keyboard),
     TYPING("Typing", Icons.Default.Spellcheck),
-    KLIPY_MEDIA("KLIPY Media", Icons.Default.Gif),
+    GIF_SETTINGS("GIF Settings", Icons.Default.Gif),
     AI_PRIVACY("AI & Privacy", Icons.Default.Security),
     FEEDBACK("Feedback", Icons.Default.Vibration)
 }
@@ -131,16 +131,14 @@ fun SettingsScreen(
     var isAppearanceExpanded by remember { mutableStateOf(true) }
     var isKeyboardExpanded by remember { mutableStateOf(true) }
     var isTypingExpanded by remember { mutableStateOf(true) }
-    var isKlipyExpanded by remember { mutableStateOf(true) }
+    var isGifSettingsExpanded by remember { mutableStateOf(true) }
     var isAiPrivacyExpanded by remember { mutableStateOf(true) }
     var isFeedbackExpanded by remember { mutableStateOf(true) }
     var isStorageExpanded by remember { mutableStateOf(true) }
 
-    var showApiKeyDialog by remember { mutableStateOf(false) }
-    var tempApiKeyInput by remember { mutableStateOf("") }
     var showPrivacyPolicy by remember { mutableStateOf(false) }
     var showClearHistoryDialog by remember { mutableStateOf(false) }
-    var showClearKlipyRecentsDialog by remember { mutableStateOf(false) }
+    var showClearGifRecentsDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
     val isDark = MaterialTheme.colorScheme.background == com.example.ui.theme.BackgroundDark
@@ -674,14 +672,14 @@ fun SettingsScreen(
                     }
                 }
 
-                // 5. FOLDER: KLIPY MEDIA INTEGRATION (PARTNER PANEL)
-                if (selectedFolder == SettingsFolder.ALL || selectedFolder == SettingsFolder.KLIPY_MEDIA) {
+                // 5. FOLDER: GIF SETTINGS
+                if (selectedFolder == SettingsFolder.ALL || selectedFolder == SettingsFolder.GIF_SETTINGS) {
                     SettingsFolderSection(
-                        title = "KLIPY Media & Partner Controls",
-                        subtitle = "Official GIF/Sticker provider, content safety, monetization & API configuration",
+                        title = "GIF Settings",
+                        subtitle = "Safe search filtering and media content restrictions",
                         icon = Icons.Default.Gif,
-                        isExpanded = isKlipyExpanded,
-                        onToggleExpand = { isKlipyExpanded = !isKlipyExpanded }
+                        isExpanded = isGifSettingsExpanded,
+                        onToggleExpand = { isGifSettingsExpanded = !isGifSettingsExpanded }
                     ) {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -689,14 +687,14 @@ fun SettingsScreen(
                         ) {
                             // Safe Content Controls
                             Text(
-                                text = "Safe Content Filtering",
+                                text = "Safe Content Restrictions",
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     color = MaterialTheme.colorScheme.onBackground,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             )
                             Text(
-                                text = "Set content moderation level via KLIPY Partner Panel:",
+                                text = "Choose content filtering level for GIF and sticker suggestions:",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp
@@ -739,118 +737,7 @@ fun SettingsScreen(
 
                         SettingsDivider()
 
-                        // Environment Selection: Test (100 req/hr) vs Production
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Environment Mode",
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                            Text(
-                                text = "Test Mode is capped at 100 requests/hour. Production has unlimited access.",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 12.sp
-                                )
-                            )
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isDark) Color(0x22FFFFFF) else Color(0x10000000))
-                                    .padding(4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                KlipyEnvironment.values().forEach { env ->
-                                    val isSelected = klipyEnv == env
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(if (isSelected) PrimaryIndigoContainer else Color.Transparent)
-                                            .clickable {
-                                                klipyRepository.setEnvironment(env)
-                                                Toast.makeText(context, "Environment: ${env.displayName} (${env.maxRequestsPerHourText})", Toast.LENGTH_SHORT).show()
-                                            }
-                                            .padding(vertical = 8.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = env.displayName,
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        SettingsDivider()
-
-                        // Ads & Monetization Toggle
-                        SettingsToggleRow(
-                            title = "KLIPY Ads & Monetization",
-                            description = "Render official KLIPY ad objects with sponsored badges for monetization readiness",
-                            isChecked = klipyAdsEnabled,
-                            onCheckedChange = {
-                                klipyRepository.setAdsEnabled(it)
-                            }
-                        )
-
-                        SettingsDivider()
-
-                        // API Key Configuration Row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    tempApiKeyInput = klipyCustomApiKey.ifBlank { klipyRepository.getActiveApiKey() }
-                                    showApiKeyDialog = true
-                                }
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Icon(Icons.Default.Key, contentDescription = null, tint = PrimaryIndigoContainer, modifier = Modifier.size(16.dp))
-                                    Text(
-                                        text = "KLIPY API Key",
-                                        style = MaterialTheme.typography.titleSmall.copy(
-                                            color = MaterialTheme.colorScheme.onBackground,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Key: ${klipyRepository.getActiveApiKey().take(8)}...${klipyRepository.getActiveApiKey().takeLast(6)}",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontSize = 11.5.sp
-                                    )
-                                )
-                            }
-                            Text(
-                                text = "Configure",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = PrimaryIndigoContainer,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-
-                        SettingsDivider()
-
-                        // Clear KLIPY Recents Row
+                        // Clear GIF Recents Row
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -858,12 +745,12 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.End
                         ) {
                             OutlinedButton(
-                                onClick = { showClearKlipyRecentsDialog = true },
+                                onClick = { showClearGifRecentsDialog = true },
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(14.dp))
-                                    Text("Clear KLIPY Recents", fontSize = 11.5.sp)
+                                    Text("Clear GIF Recents", fontSize = 11.5.sp)
                                 }
                             }
                         }
@@ -1085,13 +972,13 @@ fun SettingsScreen(
         )
     }
 
-    // Clear KLIPY Recents Dialog
-    if (showClearKlipyRecentsDialog) {
+    // Clear GIF & Sticker Recents Dialog
+    if (showClearGifRecentsDialog) {
         AlertDialog(
-            onDismissRequest = { showClearKlipyRecentsDialog = false },
+            onDismissRequest = { showClearGifRecentsDialog = false },
             title = {
                 Text(
-                    text = "Clear KLIPY Recents?",
+                    text = "Clear GIF & Sticker Recents?",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1100,7 +987,7 @@ fun SettingsScreen(
             },
             text = {
                 Text(
-                    text = "This will reset your recently used KLIPY GIFs and stickers history.",
+                    text = "This will reset your recently used GIFs and stickers history.",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1110,8 +997,8 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         klipyRepository.clearRecents()
-                        showClearKlipyRecentsDialog = false
-                        Toast.makeText(context, "KLIPY Recents Cleared", Toast.LENGTH_SHORT).show()
+                        showClearGifRecentsDialog = false
+                        Toast.makeText(context, "GIF Recents Cleared", Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigoContainer)
                 ) {
@@ -1119,73 +1006,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearKlipyRecentsDialog = false }) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            },
-            containerColor = if (isDark) Color(0xFF1E2030) else Color(0xFFFFFFFF),
-            shape = RoundedCornerShape(24.dp)
-        )
-    }
-
-    // KLIPY API Key Configuration Dialog
-    if (showApiKeyDialog) {
-        AlertDialog(
-            onDismissRequest = { showApiKeyDialog = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(Icons.Default.Key, contentDescription = null, tint = PrimaryIndigoContainer, modifier = Modifier.size(20.dp))
-                    Text(
-                        text = "KLIPY API Key",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Enter your official KLIPY API Key or keep the pre-configured partner key:",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                    OutlinedTextField(
-                        value = tempApiKeyInput,
-                        onValueChange = { tempApiKeyInput = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text("Enter KLIPY API key", fontSize = 12.sp) },
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    TextButton(
-                        onClick = {
-                            tempApiKeyInput = ""
-                            klipyRepository.setCustomApiKey("")
-                            showApiKeyDialog = false
-                            Toast.makeText(context, "Reset to Default Partner Key", Toast.LENGTH_SHORT).show()
-                        }
-                    ) {
-                        Text("Reset to Default Partner Key", fontSize = 11.5.sp, color = PrimaryIndigoContainer)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        klipyRepository.setCustomApiKey(tempApiKeyInput.trim())
-                        showApiKeyDialog = false
-                        Toast.makeText(context, "KLIPY API Key Saved", Toast.LENGTH_SHORT).show()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigoContainer)
-                ) {
-                    Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showApiKeyDialog = false }) {
+                TextButton(onClick = { showClearGifRecentsDialog = false }) {
                     Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },

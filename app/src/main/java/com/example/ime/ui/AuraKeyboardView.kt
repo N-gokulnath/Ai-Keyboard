@@ -1,40 +1,32 @@
 package com.example.ime.ui
 
-import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.view.KeyEvent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.mandatorySystemGestures
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.tappableElement
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -42,23 +34,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Gif
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.HistoryEdu
@@ -68,60 +52,55 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardCapslock
 import androidx.compose.material.icons.filled.KeyboardReturn
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.OpenWith
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Reply
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SentimentSatisfied
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Spellcheck
+import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.StickyNote2
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.VerticalAlignBottom
-import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.example.data.gemini.GeminiService
 import com.example.ime.engine.KeyAction
-import com.example.ime.engine.KeyboardLayouts
 import com.example.ime.engine.KeyboardMode
 import com.example.ime.engine.ShiftState
 import com.example.model.AIActionType
@@ -131,6 +110,16 @@ import com.example.model.WritingProfile
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+/**
+ * Production-Grade Aura Keyboard Main View.
+ * 
+ * Features:
+ * - Liquid UI Glass aesthetic with zero blue background
+ * - Top menu bar with exactly 4 centered primary quick icons
+ * - In-place replacement for Tools/Menus (matching keyboard height, no stacking)
+ * - Full-height expanded canvas for Media (GIFs, Stickers, Emojis) and AI Studio
+ * - Support for Apple Cupertino, Google Material You, and Liquid themes
+ */
 @Composable
 fun AuraKeyboardView(
     themePalette: ImeThemePalette,
@@ -139,8 +128,8 @@ fun AuraKeyboardView(
     suggestions: List<String>,
     actionInfo: KeyAction,
     isPrivateMode: Boolean,
-    settings: KeyboardSettings = KeyboardSettings(),
-    profile: WritingProfile? = null,
+    settings: KeyboardSettings,
+    profile: WritingProfile = WritingProfile(),
     initialAiAction: AIActionType = AIActionType.COMPOSE,
     systemNavInsetDp: Dp = 0.dp,
     getCurrentInputText: () -> String = { "" },
@@ -152,10 +141,10 @@ fun AuraKeyboardView(
     onActionClick: () -> Unit,
     onSuggestionClick: (String) -> Unit,
     onSwitchIme: () -> Unit,
-    onAiAction: (AIActionType) -> Unit,
+    onAiAction: (AIActionType) -> Unit = {},
     onCommitAiText: (String) -> Unit = {},
     onReplaceAiText: (String, Int) -> Unit = { _, _ -> },
-    onOpenSettings: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     onThemeChange: (String) -> Unit = {},
     onToggleFloatingMode: () -> Unit = {},
     onFloatingScaleChange: (Float) -> Unit = {},
@@ -163,6 +152,7 @@ fun AuraKeyboardView(
     onAddRecentEmoji: (String) -> Unit = {},
     onUpdatePinnedTools: (List<String>) -> Unit = {},
     onCommitRichContent: ((Uri, String, String, String?) -> Boolean)? = null,
+    onCommitKlipyMedia: ((com.example.data.klipy.KlipyMediaItem) -> Unit)? = null,
     onDpadMove: (Int) -> Unit = {},
     onSelectAll: () -> Unit = {},
     onCopy: () -> Unit = {},
@@ -170,909 +160,474 @@ fun AuraKeyboardView(
     onPaste: () -> Unit = {},
     onUndo: () -> Unit = {},
     onHeightScaleChange: (Float) -> Unit = {},
-    modifier: Modifier = Modifier
+    onDismiss: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    var showMoreDrawer by remember { mutableStateOf(false) }
-    var showSuggestionsBar by remember { mutableStateOf(true) }
+    val configuration = LocalConfiguration.current
+    val screenWidthDp = configuration.screenWidthDp.dp
 
-    // Search and prompt state buffers for upper feature panels
+    // State for search queries
     var gifSearchQuery by remember { mutableStateOf("") }
     var stickerSearchQuery by remember { mutableStateOf("") }
     var emojiSearchQuery by remember { mutableStateOf("") }
     var aiPromptText by remember { mutableStateOf("") }
     var translationInputText by remember { mutableStateOf("") }
 
-    // Floating drag offsets (persisted & live)
-    var dragOffsetX by remember(settings.floatingOffsetX) { mutableFloatStateOf(settings.floatingOffsetX) }
-    var dragOffsetY by remember(settings.floatingOffsetY) { mutableFloatStateOf(settings.floatingOffsetY) }
+    // Internal In-Place Tools Menu state
+    var showToolsMenu by remember { mutableStateOf(false) }
 
-    val effectiveHeightMultiplier = if (settings.isFloatingMode) {
-        settings.floatingHeightScale.coerceIn(0.7f, 1.3f)
-    } else {
-        settings.keyboardHeightScale.coerceIn(0.7f, 1.3f)
+    // Floating drag offset
+    var dragOffsetX by remember { mutableFloatStateOf(0f) }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+
+    val effectiveBottomInset = if (settings.isFloatingMode) 0.dp else {
+        if (settings.bottomInsetPaddingDp > 0) settings.bottomInsetPaddingDp.dp else maxOf(systemNavInsetDp, 16.dp)
     }
 
-    val keyHeight = (45 * effectiveHeightMultiplier).coerceIn(34f, 58f).dp
+    // Key height scaling
+    val keyHeight = (42.dp * settings.keyboardHeightScale).coerceIn(34.dp, 56.dp)
 
-    // Insets handling
-    val composeNavInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val composeSysBarsInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
-    val composeTappableInset = WindowInsets.tappableElement.asPaddingValues().calculateBottomPadding()
-    val composeGesturesInset = WindowInsets.mandatorySystemGestures.asPaddingValues().calculateBottomPadding()
-
-    val detectedSystemInset = maxOf(
-        systemNavInsetDp,
-        composeNavInset,
-        composeSysBarsInset,
-        composeTappableInset,
-        composeGesturesInset
-    )
-
-    val effectiveBottomInset = if (settings.isFloatingMode) {
-        4.dp
-    } else if (detectedSystemInset > 0.dp) {
-        maxOf(detectedSystemInset, settings.bottomInsetPaddingDp.dp)
-    } else {
-        if (settings.bottomInsetPaddingDp > 0) settings.bottomInsetPaddingDp.dp else 16.dp
+    // Check if current mode is an EXPANDED full-height media/AI mode
+    val isExpandedMediaOrAiMode = when (keyboardMode) {
+        KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE,
+        KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE, KeyboardMode.STICKER_SEARCH_MODE,
+        KeyboardMode.EMOJI, KeyboardMode.EMOJI_SEARCH_MODE,
+        KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> true
+        else -> false
     }
 
-    // Unified dispatching for typing into active search fields / prompt or host app
-    fun handleKeyChar(char: String) {
+    // Check if current mode is an IN-PLACE tool (replaces the key rows)
+    val isInPlaceToolMode = when (keyboardMode) {
+        KeyboardMode.TOOLBAR_CUSTOMIZATION_MODE,
+        KeyboardMode.CLIPBOARD,
+        KeyboardMode.TRANSLATION,
+        KeyboardMode.WRITING_ASSISTANT,
+        KeyboardMode.TEXT_EDITING,
+        KeyboardMode.THEMES -> true
+        else -> showToolsMenu
+    }
+
+    // Key typing interceptor for expanded search / AI input
+    val handleActiveKeyChar: (String) -> Unit = { char ->
         when (keyboardMode) {
-            KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE -> {
-                gifSearchQuery += char
-            }
-            KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE -> {
-                stickerSearchQuery += char
+            KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> {
+                aiPromptText += char
             }
             KeyboardMode.EMOJI, KeyboardMode.EMOJI_SEARCH_MODE -> {
                 emojiSearchQuery += char
             }
-            KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> {
-                aiPromptText += char
+            KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE -> {
+                gifSearchQuery += char
             }
-            KeyboardMode.TRANSLATION -> {
-                translationInputText += char
+            KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE, KeyboardMode.STICKER_SEARCH_MODE -> {
+                stickerSearchQuery += char
             }
-            else -> {
-                onKeyChar(char)
-            }
+            else -> onKeyChar(char)
         }
     }
 
-    fun handleBackspace() {
+    val handleActiveBackspace: () -> Unit = {
         when (keyboardMode) {
-            KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE -> {
-                if (gifSearchQuery.isNotEmpty()) gifSearchQuery = gifSearchQuery.dropLast(1)
-                else onBackspace()
-            }
-            KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE -> {
-                if (stickerSearchQuery.isNotEmpty()) stickerSearchQuery = stickerSearchQuery.dropLast(1)
-                else onBackspace()
+            KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> {
+                if (aiPromptText.isNotEmpty()) aiPromptText = aiPromptText.dropLast(1)
             }
             KeyboardMode.EMOJI, KeyboardMode.EMOJI_SEARCH_MODE -> {
                 if (emojiSearchQuery.isNotEmpty()) emojiSearchQuery = emojiSearchQuery.dropLast(1)
-                else onBackspace()
             }
-            KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> {
-                if (aiPromptText.isNotEmpty()) aiPromptText = aiPromptText.dropLast(1)
-                else onBackspace()
+            KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE -> {
+                if (gifSearchQuery.isNotEmpty()) gifSearchQuery = gifSearchQuery.dropLast(1)
             }
-            KeyboardMode.TRANSLATION -> {
-                if (translationInputText.isNotEmpty()) translationInputText = translationInputText.dropLast(1)
-                else onBackspace()
+            KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE, KeyboardMode.STICKER_SEARCH_MODE -> {
+                if (stickerSearchQuery.isNotEmpty()) stickerSearchQuery = stickerSearchQuery.dropLast(1)
             }
-            else -> {
-                onBackspace()
-            }
+            else -> onBackspace()
         }
     }
 
-    fun handleSpace() {
+    val handleActiveSpace: () -> Unit = {
         when (keyboardMode) {
-            KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE -> {
-                gifSearchQuery += " "
-            }
-            KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE -> {
-                stickerSearchQuery += " "
+            KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> {
+                aiPromptText += " "
             }
             KeyboardMode.EMOJI, KeyboardMode.EMOJI_SEARCH_MODE -> {
                 emojiSearchQuery += " "
             }
-            KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> {
-                aiPromptText += " "
+            KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE -> {
+                gifSearchQuery += " "
             }
-            KeyboardMode.TRANSLATION -> {
-                translationInputText += " "
+            KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE, KeyboardMode.STICKER_SEARCH_MODE -> {
+                stickerSearchQuery += " "
             }
-            else -> {
-                onSpace()
-            }
+            else -> onSpace()
         }
     }
 
-    // Floating layer modifier vs Docked layer modifier
-    val floatingModifier = if (settings.isFloatingMode) {
-        Modifier
-            .fillMaxWidth(settings.floatingScale.coerceIn(0.68f, 0.96f))
-            .offset { IntOffset(dragOffsetX.roundToInt(), dragOffsetY.roundToInt()) }
-            .padding(horizontal = 4.dp, vertical = 4.dp)
-    } else {
-        Modifier.fillMaxWidth()
-    }
-
+    // Outer Container
     Box(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.BottomCenter
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (settings.isFloatingMode) {
+                    Modifier
+                        .offset { IntOffset(dragOffsetX.roundToInt(), dragOffsetY.roundToInt()) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .shadow(16.dp, RoundedCornerShape(16.dp))
+                } else {
+                    Modifier
+                }
+            )
+            .testTag("aura_keyboard_view")
     ) {
         Surface(
-            modifier = floatingModifier,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(if (settings.isFloatingMode) RoundedCornerShape(16.dp) else RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)),
             color = themePalette.background,
-            shape = if (settings.isFloatingMode) RoundedCornerShape(22.dp) else RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            shadowElevation = if (settings.isFloatingMode) 16.dp else 0.dp,
-            border = androidx.compose.foundation.BorderStroke(
-                width = if (settings.isFloatingMode) 1.5.dp else 1.dp,
-                color = themePalette.border.copy(alpha = if (settings.isFloatingMode) 0.6f else 0.35f)
-            )
+            tonalElevation = if (settings.isFloatingMode) 8.dp else 2.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 3.dp, vertical = 3.dp)
-            ) {
-                // FLOATING HEADER CONTROLS (Rendered when floating mode is active)
-                if (settings.isFloatingMode) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(34.dp)
-                            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                            .background(themePalette.keyBackgroundPressed)
-                            .padding(horizontal = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Drag indicator & position handle
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.pointerInput(Unit) {
-                                detectDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    dragOffsetX = (dragOffsetX + dragAmount.x).coerceIn(-400f, 400f)
-                                    dragOffsetY = (dragOffsetY + dragAmount.y).coerceIn(-600f, 150f)
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.OpenWith,
-                                contentDescription = "Move Keyboard",
-                                tint = themePalette.accentPrimary,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .width(36.dp)
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(themePalette.accentPrimary.copy(alpha = 0.7f))
-                            )
-                        }
-
-                        // Floating Scale Controls & Dock button
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            // Scale down (-)
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(themePalette.keyBackground)
-                                    .clickable { onFloatingScaleChange((settings.floatingScale - 0.05f).coerceAtLeast(0.68f)) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.ZoomOut, contentDescription = "Smaller", tint = themePalette.keyText, modifier = Modifier.size(13.dp))
-                            }
-
-                            // Scale up (+)
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(themePalette.keyBackground)
-                                    .clickable { onFloatingScaleChange((settings.floatingScale + 0.05f).coerceAtMost(0.98f)) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.ZoomIn, contentDescription = "Larger", tint = themePalette.keyText, modifier = Modifier.size(13.dp))
-                            }
-
-                            // Reset Position
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(themePalette.keyBackground)
-                                    .clickable {
-                                        dragOffsetX = 0f
-                                        dragOffsetY = 0f
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Reset Position", tint = themePalette.keyText, modifier = Modifier.size(13.dp))
-                            }
-
-                            // Dock Back Button
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(themePalette.accentPrimary)
-                                    .clickable { onToggleFloatingMode() }
-                                    .padding(horizontal = 6.dp, vertical = 3.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Icon(Icons.Default.VerticalAlignBottom, contentDescription = "Dock", tint = Color.White, modifier = Modifier.size(11.dp))
-                                    Text("Dock", color = Color.White, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
+                    .drawBehind {
+                        // Subtle liquid glass perimeter luminescence
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    themePalette.border.copy(alpha = 0.25f),
+                                    Color.Transparent
+                                )
+                            ),
+                            size = size.copy(height = 3.dp.toPx())
+                        )
                     }
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                // -------------------------------------------------------------
+                // 1. FLOATING CONTROL BAR (Only visible in Floating Mode)
+                // -------------------------------------------------------------
+                if (settings.isFloatingMode) {
+                    FloatingTopControlBar(
+                        themePalette = themePalette,
+                        onResetPosition = {
+                            dragOffsetX = 0f
+                            dragOffsetY = 0f
+                        },
+                        onDock = onToggleFloatingMode
+                    )
                 }
 
-                // TOP TOOLBAR AREA (Gboard style compact toolbar or feature header)
-                val isFeatureMode = when (keyboardMode) {
-                    KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE,
-                    KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE,
-                    KeyboardMode.EMOJI, KeyboardMode.EMOJI_SEARCH_MODE,
-                    KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE,
-                    KeyboardMode.TOOLBAR_CUSTOMIZATION_MODE,
-                    KeyboardMode.CLIPBOARD,
-                    KeyboardMode.TRANSLATION,
-                    KeyboardMode.WRITING_ASSISTANT,
-                    KeyboardMode.TEXT_EDITING,
-                    KeyboardMode.THEMES -> true
-                    else -> false
-                }
-
-                if (!isFeatureMode) {
-                    // COMPACT TOOLBAR / SUGGESTIONS
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(38.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(themePalette.candidateBarBg)
-                            .padding(horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                // -------------------------------------------------------------
+                // 2. FULL-HEIGHT EXPANDED MEDIA & AI PANELS (Top Pane + Lower Keyboard)
+                // -------------------------------------------------------------
+                if (isExpandedMediaOrAiMode) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Quick Switcher / Drawer toggle
+                        // Upper Interactive Pane
                         Box(
                             modifier = Modifier
-                                .size(30.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (showMoreDrawer) themePalette.accentPrimary else themePalette.keyBackgroundPressed)
-                                .clickable { showMoreDrawer = !showMoreDrawer },
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .height(245.dp)
                         ) {
-                            Icon(
-                                imageVector = if (showMoreDrawer) Icons.Default.Close else Icons.Default.GridView,
-                                contentDescription = "Tools Drawer",
-                                tint = if (showMoreDrawer) Color.White else themePalette.accentPrimary,
-                                modifier = Modifier.size(15.dp)
+                            when (keyboardMode) {
+                                KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE -> {
+                                    GifKeyboardLayout(
+                                        themePalette = themePalette,
+                                        searchQuery = gifSearchQuery,
+                                        onQueryChange = { gifSearchQuery = it },
+                                        onSelectGif = { item ->
+                                            if (onCommitKlipyMedia != null) {
+                                                onCommitKlipyMedia(item)
+                                            } else {
+                                                val mediaUrl = item.resolveDirectMediaUrl(preferSmall = false)
+                                                val title = item.title ?: "GIF"
+                                                val committed = onCommitRichContent?.invoke(Uri.parse(mediaUrl), "image/gif", title, mediaUrl) ?: false
+                                                if (!committed && mediaUrl.isNotBlank()) {
+                                                    onKeyChar(mediaUrl)
+                                                }
+                                            }
+                                            onModeChange(KeyboardMode.NORMAL_MODE)
+                                        },
+                                        onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                    )
+                                }
+
+                                KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE, KeyboardMode.STICKER_SEARCH_MODE -> {
+                                    StickerKeyboardLayout(
+                                        themePalette = themePalette,
+                                        searchQuery = stickerSearchQuery,
+                                        onQueryChange = { stickerSearchQuery = it },
+                                        onSelectSticker = { item ->
+                                            if (onCommitKlipyMedia != null) {
+                                                onCommitKlipyMedia(item)
+                                            } else {
+                                                val mediaUrl = item.resolveDirectMediaUrl(preferSmall = false)
+                                                val title = item.title ?: "Sticker"
+                                                val committed = onCommitRichContent?.invoke(Uri.parse(mediaUrl), "image/webp", title, mediaUrl) ?: false
+                                                if (!committed && mediaUrl.isNotBlank()) {
+                                                    onKeyChar(mediaUrl)
+                                                }
+                                            }
+                                            onModeChange(KeyboardMode.NORMAL_MODE)
+                                        },
+                                        onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                    )
+                                }
+
+                                KeyboardMode.EMOJI, KeyboardMode.EMOJI_SEARCH_MODE -> {
+                                    EmojiKeyboardPanel(
+                                        themePalette = themePalette,
+                                        searchQuery = emojiSearchQuery,
+                                        recentEmojis = settings.recentEmojis,
+                                        onQueryChange = { emojiSearchQuery = it },
+                                        onSelectEmoji = { emoji ->
+                                            onAddRecentEmoji(emoji)
+                                            onKeyChar(emoji)
+                                        },
+                                        onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                    )
+                                }
+
+                                KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> {
+                                    AiStudioKeyboardLayout(
+                                        themePalette = themePalette,
+                                        initialAction = initialAiAction,
+                                        profile = profile,
+                                        promptText = aiPromptText,
+                                        onPromptChange = { aiPromptText = it },
+                                        getCurrentInputText = getCurrentInputText,
+                                        onCommitText = { text ->
+                                            onCommitAiText(text)
+                                            onModeChange(KeyboardMode.NORMAL_MODE)
+                                        },
+                                        onReplaceText = { text, len ->
+                                            onReplaceAiText(text, len)
+                                            onModeChange(KeyboardMode.NORMAL_MODE)
+                                        },
+                                        onClose = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                    )
+                                }
+                                else -> {}
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Lower Full Keyboard for direct instruction typing
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 2.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            AlphabetLayout(
+                                themePalette = themePalette,
+                                shiftState = shiftState,
+                                keyHeight = keyHeight * 0.95f,
+                                onKeyChar = handleActiveKeyChar,
+                                onBackspace = handleActiveBackspace,
+                                onShiftToggle = onShiftToggle,
+                                onModeChange = onModeChange,
+                                actionInfo = actionInfo,
+                                onActionClick = onActionClick,
+                                onSpace = handleActiveSpace,
+                                onSwitchIme = onSwitchIme,
+                                settings = settings
                             )
                         }
-
-                        // PINNED TOOLS ROW OR CANDIDATE SUGGESTIONS
-                        if (suggestions.isNotEmpty() && showSuggestionsBar && !showMoreDrawer) {
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                suggestions.forEach { suggestion ->
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(themePalette.keyBackground)
-                                            .clickable { onSuggestionClick(suggestion) }
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Text(
-                                            text = suggestion,
-                                            style = TextStyle(
-                                                color = themePalette.keyText,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                        )
-                                    }
+                    }
+                } else if (isInPlaceToolMode) {
+                    // ---------------------------------------------------------
+                    // 3. IN-PLACE TOOLS & MENUS (Replaces keyboard keys in-place)
+                    // ---------------------------------------------------------
+                    if (showToolsMenu) {
+                        InPlaceToolsMenuGrid(
+                            themePalette = themePalette,
+                            onSelectTool = { tool ->
+                                showToolsMenu = false
+                                when (tool.id) {
+                                    "floating" -> onToggleFloatingMode()
+                                    "settings" -> onOpenSettings()
+                                    else -> onModeChange(tool.targetMode)
                                 }
-                            }
-                        } else {
-                            // PINNED TOOLS
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                val pinnedIds = if (settings.pinnedToolIds.isEmpty()) KeyboardTools.DEFAULT_PINNED_IDS else settings.pinnedToolIds
-                                pinnedIds.forEach { toolId ->
-                                    val tool = KeyboardTools.getToolById(toolId)
-                                    if (tool != null) {
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(themePalette.keyBackground)
-                                                .clickable {
-                                                    when (tool.id) {
-                                                        "floating" -> onToggleFloatingMode()
-                                                        "settings" -> onOpenSettings()
-                                                        else -> onModeChange(tool.targetMode)
-                                                    }
-                                                }
-                                                .padding(horizontal = 7.dp, vertical = 4.dp)
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = tool.icon,
-                                                    contentDescription = tool.title,
-                                                    tint = themePalette.accentPrimary,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                                Text(
-                                                    text = tool.shortName,
-                                                    style = TextStyle(
-                                                        color = themePalette.keyText,
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Medium
-                                                    )
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Right actions: More & AI Quick Launch
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            // More Drawer Button
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(themePalette.keyBackgroundPressed)
-                                    .clickable { showMoreDrawer = !showMoreDrawer },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreHoriz,
-                                    contentDescription = "More Tools",
-                                    tint = themePalette.keyText,
-                                    modifier = Modifier.size(15.dp)
+                            },
+                            onClose = { showToolsMenu = false }
+                        )
+                    } else {
+                        when (keyboardMode) {
+                            KeyboardMode.CLIPBOARD -> {
+                                ClipboardPanel(
+                                    themePalette = themePalette,
+                                    onSelectClip = { clip ->
+                                        onKeyChar(clip)
+                                        onModeChange(KeyboardMode.NORMAL_MODE)
+                                    },
+                                    onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
                                 )
                             }
 
-                            // AI Studio Button
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Brush.horizontalGradient(listOf(themePalette.accentPrimary, themePalette.accentSecondary)))
-                                    .clickable { onModeChange(KeyboardMode.AI_CHAT_MODE) }
-                                    .padding(horizontal = 6.dp, vertical = 4.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = "AI Studio",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Text(
-                                        text = "AI",
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                            KeyboardMode.TRANSLATION -> {
+                                TranslationPanel(
+                                    themePalette = themePalette,
+                                    inputText = translationInputText,
+                                    onInputTextChange = { translationInputText = it },
+                                    onInsertTranslation = { translated ->
+                                        onKeyChar(translated)
+                                        onModeChange(KeyboardMode.NORMAL_MODE)
+                                    },
+                                    onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                )
                             }
+
+                            KeyboardMode.TEXT_EDITING -> {
+                                TextEditingPanel(
+                                    themePalette = themePalette,
+                                    onDpadMove = onDpadMove,
+                                    onSelectAll = onSelectAll,
+                                    onCopy = onCopy,
+                                    onCut = onCut,
+                                    onPaste = onPaste,
+                                    onUndo = onUndo,
+                                    onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                )
+                            }
+
+                            KeyboardMode.THEMES -> {
+                                ThemesPanel(
+                                    themePalette = themePalette,
+                                    selectedThemeId = settings.selectedThemeId,
+                                    onSelectTheme = { themeId ->
+                                        onThemeChange(themeId)
+                                    },
+                                    onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                )
+                            }
+
+                            KeyboardMode.WRITING_ASSISTANT -> {
+                                WritingAssistantPanel(
+                                    themePalette = themePalette,
+                                    getCurrentInputText = getCurrentInputText,
+                                    onReplaceText = { newText, len ->
+                                        onReplaceAiText(newText, len)
+                                        onModeChange(KeyboardMode.NORMAL_MODE)
+                                    },
+                                    onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                )
+                            }
+
+                            KeyboardMode.TOOLBAR_CUSTOMIZATION_MODE -> {
+                                ToolbarCustomizerLayout(
+                                    themePalette = themePalette,
+                                    pinnedToolIds = if (settings.pinnedToolIds.isEmpty()) KeyboardTools.DEFAULT_PINNED_IDS else settings.pinnedToolIds,
+                                    onUpdatePinnedTools = onUpdatePinnedTools,
+                                    onDone = { onModeChange(KeyboardMode.NORMAL_MODE) }
+                                )
+                            }
+
+                            else -> {}
                         }
                     }
-                }
+                } else {
+                    // ---------------------------------------------------------
+                    // 4. STANDARD KEYBOARD INTERFACE: TOP MENU BAR + KEY ROWS
+                    // ---------------------------------------------------------
 
-                // MORE TOOLS DRAWER (When expanded)
-                if (showMoreDrawer && !isFeatureMode) {
+                    // TOP MENU BAR (Clean, compact: Radiant AI, Grid Menu, Pinned Tools, Settings)
+                    TopMenuBar(
+                        themePalette = themePalette,
+                        suggestions = suggestions,
+                        showSuggestions = settings.showSuggestions,
+                        pinnedToolIds = if (settings.pinnedToolIds.isEmpty()) KeyboardTools.DEFAULT_PINNED_IDS else settings.pinnedToolIds,
+                        isPrivateMode = isPrivateMode,
+                        onOpenToolsMenu = { showToolsMenu = true },
+                        onModeChange = onModeChange,
+                        onSuggestionClick = onSuggestionClick,
+                        onOpenSettings = onOpenSettings
+                    )
+
+                    // KEYBOARD KEYS AREA (Alphabet or Symbols)
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                            .padding(top = 2.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.5.dp)
                     ) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(4),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(130.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            items(KeyboardTools.ALL_TOOLS, key = { it.id }) { tool ->
-                                Box(
-                                    modifier = Modifier
-                                        .height(40.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(themePalette.keyBackground)
-                                        .border(0.5.dp, themePalette.border.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                        .clickable {
-                                            showMoreDrawer = false
-                                            when (tool.id) {
-                                                "floating" -> onToggleFloatingMode()
-                                                "settings" -> onOpenSettings()
-                                                else -> onModeChange(tool.targetMode)
-                                            }
-                                        }
-                                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = tool.icon,
-                                            contentDescription = tool.title,
-                                            tint = themePalette.accentPrimary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Text(
-                                            text = tool.shortName,
-                                            style = TextStyle(
-                                                color = themePalette.keyText,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Medium
-                                            ),
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // UPPER FEATURE PANELS (When a mode is active)
-                when (keyboardMode) {
-                    KeyboardMode.GIF, KeyboardMode.GIF_SEARCH_MODE -> {
-                        GifKeyboardLayout(
-                            themePalette = themePalette,
-                            searchQuery = gifSearchQuery,
-                            onQueryChange = { gifSearchQuery = it },
-                            onSelectGif = { item ->
-                                val mediaUrl = item.resolveDirectMediaUrl(preferSmall = false)
-                                val title = item.title ?: "KLIPY GIF"
-                                val committed = onCommitRichContent?.invoke(Uri.parse(mediaUrl), "image/gif", title, mediaUrl) ?: false
-                                if (!committed && mediaUrl.isNotBlank()) {
-                                    onKeyChar(mediaUrl)
-                                }
-                                onModeChange(KeyboardMode.NORMAL_MODE)
-                            },
-                            onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.STICKERS, KeyboardMode.STICKER_MODE -> {
-                        StickerKeyboardLayout(
-                            themePalette = themePalette,
-                            searchQuery = stickerSearchQuery,
-                            onQueryChange = { stickerSearchQuery = it },
-                            onSelectSticker = { item ->
-                                val mediaUrl = item.resolveDirectMediaUrl(preferSmall = false)
-                                val title = item.title ?: "KLIPY Sticker"
-                                val committed = onCommitRichContent?.invoke(Uri.parse(mediaUrl), "image/webp", title, mediaUrl) ?: false
-                                if (!committed && mediaUrl.isNotBlank()) {
-                                    onKeyChar(mediaUrl)
-                                }
-                                onModeChange(KeyboardMode.NORMAL_MODE)
-                            },
-                            onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.EMOJI, KeyboardMode.EMOJI_SEARCH_MODE -> {
-                        EmojiKeyboardPanel(
-                            themePalette = themePalette,
-                            searchQuery = emojiSearchQuery,
-                            recentEmojis = settings.recentEmojis,
-                            onQueryChange = { emojiSearchQuery = it },
-                            onSelectEmoji = { emoji ->
-                                onAddRecentEmoji(emoji)
-                                onKeyChar(emoji)
-                            },
-                            onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.AI_STUDIO, KeyboardMode.AI_CHAT_MODE -> {
-                        AiStudioKeyboardLayout(
-                            themePalette = themePalette,
-                            initialAction = initialAiAction,
-                            profile = profile,
-                            promptText = aiPromptText,
-                            onPromptChange = { aiPromptText = it },
-                            getCurrentInputText = getCurrentInputText,
-                            onCommitText = { text ->
-                                onCommitAiText(text)
-                                onModeChange(KeyboardMode.NORMAL_MODE)
-                            },
-                            onReplaceText = { text, len ->
-                                onReplaceAiText(text, len)
-                                onModeChange(KeyboardMode.NORMAL_MODE)
-                            },
-                            onClose = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.TOOLBAR_CUSTOMIZATION_MODE -> {
-                        ToolbarCustomizerLayout(
-                            themePalette = themePalette,
-                            pinnedToolIds = if (settings.pinnedToolIds.isEmpty()) KeyboardTools.DEFAULT_PINNED_IDS else settings.pinnedToolIds,
-                            onUpdatePinnedTools = onUpdatePinnedTools,
-                            onDone = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.CLIPBOARD -> {
-                        ClipboardPanel(
-                            themePalette = themePalette,
-                            onSelectClip = { clip ->
-                                onKeyChar(clip)
-                                onModeChange(KeyboardMode.NORMAL_MODE)
-                            },
-                            onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.TRANSLATION -> {
-                        TranslationPanel(
-                            themePalette = themePalette,
-                            inputText = translationInputText,
-                            onInputTextChange = { translationInputText = it },
-                            onInsertTranslation = { translated ->
-                                onKeyChar(translated)
-                                onModeChange(KeyboardMode.NORMAL_MODE)
-                            },
-                            onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.TEXT_EDITING -> {
-                        TextEditingPanel(
-                            themePalette = themePalette,
-                            onDpadMove = onDpadMove,
-                            onSelectAll = onSelectAll,
-                            onCopy = onCopy,
-                            onCut = onCut,
-                            onPaste = onPaste,
-                            onUndo = onUndo,
-                            onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.THEMES -> {
-                        ThemesPanel(
-                            themePalette = themePalette,
-                            selectedThemeId = settings.selectedThemeId,
-                            onSelectTheme = { themeId ->
-                                onThemeChange(themeId)
-                            },
-                            onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    KeyboardMode.WRITING_ASSISTANT -> {
-                        WritingAssistantPanel(
-                            themePalette = themePalette,
-                            getCurrentInputText = getCurrentInputText,
-                            onReplaceText = { newText, len ->
-                                onReplaceAiText(newText, len)
-                                onModeChange(KeyboardMode.NORMAL_MODE)
-                            },
-                            onBackToAlpha = { onModeChange(KeyboardMode.NORMAL_MODE) }
-                        )
-                    }
-
-                    else -> {
-                        // Normal mode or standard typing
-                    }
-                }
-
-                // BOTTOM UNIFIED KEYBOARD ENGINE
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    // NUMBER ROW (Optional)
-                    if (settings.showNumberRow && keyboardMode != KeyboardMode.SYMBOLS && keyboardMode != KeyboardMode.MORE_SYMBOLS) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            KeyboardLayouts.NUMBERS_ROW.forEach { num ->
-                                ImeKey(
-                                    label = num,
-                                    themePalette = themePalette,
-                                    height = (keyHeight * 0.75f),
-                                    modifier = Modifier.weight(1f),
-                                    onClick = { handleKeyChar(num) }
-                                )
-                            }
-                        }
-                    }
-
-                    // STANDARD QWERTY ROWS OR SYMBOL ROWS
-                    when (keyboardMode) {
-                        KeyboardMode.SYMBOLS -> {
-                            // SYMBOLS ROW 1
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                KeyboardLayouts.SYMBOLS_ROW_1.forEach { char ->
-                                    ImeKey(label = char, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(char) })
-                                }
-                            }
-                            // SYMBOLS ROW 2
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                KeyboardLayouts.SYMBOLS_ROW_2.forEach { char ->
-                                    ImeKey(label = char, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(char) })
-                                }
-                            }
-                            // SYMBOLS ROW 3
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-                                ImeSpecialKey(
-                                    label = "=\\<",
-                                    themePalette = themePalette,
-                                    height = keyHeight,
-                                    modifier = Modifier.weight(1.3f),
-                                    onClick = { onModeChange(KeyboardMode.MORE_SYMBOLS) }
-                                )
-                                KeyboardLayouts.SYMBOLS_ROW_3.forEach { char ->
-                                    ImeKey(label = char, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(char) })
-                                }
-                                ImeSpecialKey(
-                                    icon = Icons.AutoMirrored.Filled.Backspace,
-                                    themePalette = themePalette,
-                                    height = keyHeight,
-                                    modifier = Modifier.weight(1.3f),
-                                    onClick = { handleBackspace() }
-                                )
-                            }
-                        }
-
-                        KeyboardMode.MORE_SYMBOLS -> {
-                            val moreRow1 = listOf("~", "`", "|", "•", "√", "π", "÷", "×", "¶", "∆")
-                            val moreRow2 = listOf("£", "¢", "€", "¥", "^", "°", "=", "{", "}", "\\")
-                            val moreRow3 = listOf("%", "©", "®", "™", "✓", "[", "]")
-
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                moreRow1.forEach { char ->
-                                    ImeKey(label = char, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(char) })
-                                }
-                            }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                moreRow2.forEach { char ->
-                                    ImeKey(label = char, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(char) })
-                                }
-                            }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-                                ImeSpecialKey(
-                                    label = "?123",
-                                    themePalette = themePalette,
-                                    height = keyHeight,
-                                    modifier = Modifier.weight(1.3f),
-                                    onClick = { onModeChange(KeyboardMode.SYMBOLS) }
-                                )
-                                moreRow3.forEach { char ->
-                                    ImeKey(label = char, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(char) })
-                                }
-                                ImeSpecialKey(
-                                    icon = Icons.AutoMirrored.Filled.Backspace,
-                                    themePalette = themePalette,
-                                    height = keyHeight,
-                                    modifier = Modifier.weight(1.3f),
-                                    onClick = { handleBackspace() }
-                                )
-                            }
-                        }
-
-                        else -> {
-                            // PRIMARY QWERTY ENGINE
-                            // ROW 1
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                KeyboardLayouts.QWERTY_ROW_1.forEach { char ->
-                                    val displayChar = if (shiftState != ShiftState.OFF) char.uppercase() else char
-                                    ImeKey(label = displayChar, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(displayChar) })
-                                }
-                            }
-
-                            // ROW 2
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Spacer(modifier = Modifier.weight(0.5f))
-                                KeyboardLayouts.QWERTY_ROW_2.forEach { char ->
-                                    val displayChar = if (shiftState != ShiftState.OFF) char.uppercase() else char
-                                    ImeKey(label = displayChar, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(displayChar) })
-                                }
-                                Spacer(modifier = Modifier.weight(0.5f))
-                            }
-
-                            // ROW 3: Shift, Keys, Backspace
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-                                ImeSpecialKey(
-                                    icon = Icons.Default.KeyboardCapslock,
-                                    themePalette = themePalette,
-                                    height = keyHeight,
-                                    isActive = shiftState != ShiftState.OFF,
-                                    modifier = Modifier.weight(1.3f),
-                                    onClick = { onShiftToggle() }
-                                )
-                                KeyboardLayouts.QWERTY_ROW_3.forEach { char ->
-                                    val displayChar = if (shiftState != ShiftState.OFF) char.uppercase() else char
-                                    ImeKey(label = displayChar, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { handleKeyChar(displayChar) })
-                                }
-                                ImeSpecialKey(
-                                    icon = Icons.AutoMirrored.Filled.Backspace,
-                                    themePalette = themePalette,
-                                    height = keyHeight,
-                                    modifier = Modifier.weight(1.3f),
-                                    onClick = { handleBackspace() }
-                                )
-                            }
-                        }
-                    }
-
-                    // BOTTOM ROW (Mode switch, Language, Spacebar, Dot, Action Key)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(3.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // ?123 / ABC TOGGLE
-                        val isSymbols = keyboardMode == KeyboardMode.SYMBOLS || keyboardMode == KeyboardMode.MORE_SYMBOLS
-                        ImeSpecialKey(
-                            label = if (isSymbols) "ABC" else "?123",
-                            themePalette = themePalette,
-                            height = keyHeight,
-                            modifier = Modifier.weight(1.3f),
-                            onClick = {
-                                if (isSymbols) onModeChange(KeyboardMode.NORMAL_MODE)
-                                else onModeChange(KeyboardMode.SYMBOLS)
-                            }
-                        )
-
-                        // EMOJI / LANGUAGE KEY (if enabled)
-                        if (settings.showEmojiKey) {
-                            ImeSpecialKey(
-                                icon = Icons.Default.SentimentSatisfied,
+                        // Optional Number Row
+                        if (settings.showNumberRow && keyboardMode != KeyboardMode.SYMBOLS && keyboardMode != KeyboardMode.MORE_SYMBOLS) {
+                            NumberRow(
                                 themePalette = themePalette,
-                                height = keyHeight,
-                                modifier = Modifier.weight(0.9f),
-                                onClick = { onModeChange(KeyboardMode.EMOJI_SEARCH_MODE) }
+                                height = (keyHeight * 0.85f),
+                                onKeyChar = onKeyChar
                             )
                         }
 
-                        // COMMA KEY
-                        ImeKey(
-                            label = ",",
-                            themePalette = themePalette,
-                            height = keyHeight,
-                            modifier = Modifier.weight(0.9f),
-                            onClick = { handleKeyChar(",") }
-                        )
-
-                        // SPACEBAR
-                        Box(
-                            modifier = Modifier
-                                .weight(3.5f)
-                                .height(keyHeight)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(themePalette.keyBackground)
-                                .border(0.5.dp, themePalette.border.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                                .clickable { handleSpace() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Aura",
-                                style = TextStyle(
-                                    color = themePalette.keySubtext.copy(alpha = 0.5f),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
+                        // Standard 4 Rows of Keys
+                        when (keyboardMode) {
+                            KeyboardMode.SYMBOLS -> {
+                                SymbolsLayout(
+                                    themePalette = themePalette,
+                                    keyHeight = keyHeight,
+                                    onKeyChar = onKeyChar,
+                                    onBackspace = onBackspace,
+                                    onModeChange = onModeChange,
+                                    actionInfo = actionInfo,
+                                    onActionClick = onActionClick,
+                                    onSpace = onSpace,
+                                    settings = settings
                                 )
-                            )
-                        }
-
-                        // PERIOD KEY
-                        ImeKey(
-                            label = ".",
-                            themePalette = themePalette,
-                            height = keyHeight,
-                            modifier = Modifier.weight(0.9f),
-                            onClick = { handleKeyChar(".") }
-                        )
-
-                        // ACTION / ENTER KEY
-                        val actionLabel = when (actionInfo.actionId) {
-                            android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH -> "Search"
-                            android.view.inputmethod.EditorInfo.IME_ACTION_SEND -> "Send"
-                            android.view.inputmethod.EditorInfo.IME_ACTION_GO -> "Go"
-                            android.view.inputmethod.EditorInfo.IME_ACTION_NEXT -> "Next"
-                            android.view.inputmethod.EditorInfo.IME_ACTION_DONE -> "Done"
-                            else -> "Enter"
-                        }
-                        val actionIcon: ImageVector = when (actionInfo.actionId) {
-                            android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH -> Icons.Default.Search
-                            android.view.inputmethod.EditorInfo.IME_ACTION_SEND -> Icons.Default.Send
-                            android.view.inputmethod.EditorInfo.IME_ACTION_DONE -> Icons.Default.Done
-                            else -> Icons.Default.KeyboardReturn
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1.4f)
-                                .height(keyHeight)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(themePalette.accentPrimary)
-                                .clickable { onActionClick() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Icon(
-                                    imageVector = actionIcon,
-                                    contentDescription = actionLabel,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(15.dp)
+                            }
+                            KeyboardMode.MORE_SYMBOLS -> {
+                                MoreSymbolsLayout(
+                                    themePalette = themePalette,
+                                    keyHeight = keyHeight,
+                                    onKeyChar = onKeyChar,
+                                    onBackspace = onBackspace,
+                                    onModeChange = onModeChange,
+                                    actionInfo = actionInfo,
+                                    onActionClick = onActionClick,
+                                    onSpace = onSpace,
+                                    settings = settings
+                                )
+                            }
+                            else -> {
+                                AlphabetLayout(
+                                    themePalette = themePalette,
+                                    shiftState = shiftState,
+                                    keyHeight = keyHeight,
+                                    onKeyChar = onKeyChar,
+                                    onBackspace = onBackspace,
+                                    onShiftToggle = onShiftToggle,
+                                    onModeChange = onModeChange,
+                                    actionInfo = actionInfo,
+                                    onActionClick = onActionClick,
+                                    onSpace = onSpace,
+                                    onSwitchIme = onSwitchIme,
+                                    settings = settings
                                 )
                             }
                         }
                     }
                 }
 
-                // BOTTOM FLOATING RESIZE & DRAG PILL (When in floating mode)
+                // -------------------------------------------------------------
+                // 5. BOTTOM DRAG HANDLE (Floating Mode) OR INSET SPACER (Docked)
+                // -------------------------------------------------------------
                 if (settings.isFloatingMode) {
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(20.dp)
+                            .height(18.dp)
                             .padding(top = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(56.dp)
-                                .height(4.5.dp)
-                                .clip(RoundedCornerShape(2.5.dp))
-                                .background(themePalette.keySubtext.copy(alpha = 0.5f))
+                                .width(48.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(themePalette.keySubtext.copy(alpha = 0.45f))
                                 .pointerInput(Unit) {
                                     detectDragGestures { change, dragAmount ->
                                         change.consume()
@@ -1082,10 +637,7 @@ fun AuraKeyboardView(
                                 }
                         )
                     }
-                }
-
-                // BOTTOM SYSTEM INSET SPACER (Docked mode only)
-                if (!settings.isFloatingMode && effectiveBottomInset > 0.dp) {
+                } else if (effectiveBottomInset > 0.dp) {
                     Spacer(modifier = Modifier.height(effectiveBottomInset))
                 }
             }
@@ -1093,9 +645,849 @@ fun AuraKeyboardView(
     }
 }
 
-// -------------------------------------------------------------
-// HELPER COMPOSABLES: Keys, Emoji Panel, Clipboard, Translate, etc.
-// -------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// TOP MENU BAR (RADIANT AI, GRID MENU, PINNED TOOLS, SETTINGS)
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun TopMenuBar(
+    themePalette: ImeThemePalette,
+    suggestions: List<String>,
+    showSuggestions: Boolean,
+    pinnedToolIds: List<String>,
+    isPrivateMode: Boolean,
+    onOpenToolsMenu: () -> Unit,
+    onModeChange: (KeyboardMode) -> Unit,
+    onSuggestionClick: (String) -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    val hasSuggestions = suggestions.isNotEmpty() && showSuggestions
+    val pinnedTools = remember(pinnedToolIds) {
+        val list = pinnedToolIds.mapNotNull { KeyboardTools.getToolById(it) }
+        if (list.isNotEmpty()) list.take(5) else listOf(
+            KeyboardTools.TOOL_CLIPBOARD,
+            KeyboardTools.TOOL_WRITING_ASSISTANT,
+            KeyboardTools.TOOL_THEMES,
+            KeyboardTools.TOOL_TRANSLATE,
+            KeyboardTools.TOOL_EMOJI
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(themePalette.candidateBarBg)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // 1. LEFT: Radiant AI Button
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(listOf(Color(0xFFFF7A00), Color(0xFFFF007A), Color(0xFF7000FF))))
+                .clickable { onModeChange(KeyboardMode.AI_STUDIO) },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AutoAwesome,
+                contentDescription = "AI Assistant",
+                tint = Color.White,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(3.dp))
+
+        // 2. Grid Menu Button
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(7.dp))
+                .background(themePalette.keyBackground)
+                .clickable { onOpenToolsMenu() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.GridView,
+                contentDescription = "Tools Menu",
+                tint = themePalette.accentPrimary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        // 3. CENTER: PINNED TOOLS OR WORD SUGGESTIONS
+        if (hasSuggestions) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                suggestions.forEach { suggestion ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(themePalette.keyBackground)
+                            .clickable { onSuggestionClick(suggestion) }
+                            .padding(horizontal = 9.dp, vertical = 4.5.dp)
+                    ) {
+                        Text(
+                            text = suggestion,
+                            style = TextStyle(
+                                color = themePalette.keyText,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                pinnedTools.forEach { tool ->
+                    Box(
+                        modifier = Modifier
+                            .height(30.dp)
+                            .width(42.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(themePalette.keyBackground)
+                            .border(0.5.dp, themePalette.border.copy(alpha = 0.25f), RoundedCornerShape(7.dp))
+                            .clickable { onModeChange(tool.targetMode) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = tool.icon,
+                            contentDescription = tool.title,
+                            tint = themePalette.keyText,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(3.dp))
+
+        // 4. RIGHT: Settings
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            if (isPrivateMode) {
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0x3310B981)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = "Private Mode",
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(themePalette.keyBackground)
+                    .clickable { onOpenSettings() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = themePalette.keySubtext,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MenuShortcutIcon(
+    icon: ImageVector,
+    label: String,
+    isGradient: Boolean,
+    themePalette: ImeThemePalette,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .height(30.dp)
+            .width(52.dp)
+            .clip(RoundedCornerShape(7.dp))
+            .then(
+                if (isGradient) {
+                    Modifier.background(Brush.horizontalGradient(listOf(themePalette.accentPrimary, themePalette.accentSecondary)))
+                } else {
+                    Modifier
+                        .background(themePalette.keyBackground)
+                        .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(7.dp))
+                }
+            )
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (isGradient) Color.White else themePalette.accentPrimary,
+            modifier = Modifier.size(17.dp)
+        )
+    }
+}
+
+// -----------------------------------------------------------------------------
+// IN-PLACE TOOLS MENU GRID (REPLACES KEYBOARD IN-PLACE)
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun InPlaceToolsMenuGrid(
+    themePalette: ImeThemePalette,
+    onSelectTool: (KeyboardToolItem) -> Unit,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(230.dp)
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(themePalette.keyBackgroundPressed)
+                        .clickable { onClose() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = themePalette.keyText,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+                Text(
+                    text = "Keyboard Tools & Options",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        color = themePalette.keyText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(themePalette.keyBackground)
+                    .clickable { onClose() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close Menu",
+                    tint = themePalette.keySubtext,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+
+        // Tools Grid (2 rows x 4 columns)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(4),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            items(KeyboardTools.ALL_TOOLS, key = { it.id }) { tool ->
+                Box(
+                    modifier = Modifier
+                        .height(84.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(themePalette.keyBackground)
+                        .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                        .clickable { onSelectTool(tool) }
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(themePalette.keyBackgroundPressed),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = tool.icon,
+                                contentDescription = tool.title,
+                                tint = themePalette.accentPrimary,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = tool.shortName,
+                            style = TextStyle(
+                                color = themePalette.keyText,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// FLOATING TOP CONTROL BAR
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun FloatingTopControlBar(
+    themePalette: ImeThemePalette,
+    onResetPosition: () -> Unit,
+    onDock: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.PictureInPicture,
+                contentDescription = null,
+                tint = themePalette.accentPrimary,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                text = "Floating Keyboard",
+                color = themePalette.keySubtext,
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(themePalette.keyBackgroundPressed)
+                    .clickable { onResetPosition() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Reset Position",
+                    tint = themePalette.keyText,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(themePalette.accentPrimary)
+                    .clickable { onDock() }
+                    .padding(horizontal = 6.dp, vertical = 2.5.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VerticalAlignBottom,
+                        contentDescription = "Dock",
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
+                    )
+                    Text("Dock", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// NUMBER ROW
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun NumberRow(
+    themePalette: ImeThemePalette,
+    height: Dp,
+    onKeyChar: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        val numbers = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+        numbers.forEach { num ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(height)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(themePalette.specialKeyBackground)
+                    .border(0.5.dp, themePalette.border.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                    .clickable { onKeyChar(num) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = num,
+                    style = TextStyle(
+                        color = themePalette.keyText,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// ALPHABET KEYBOARD LAYOUT (QWERTY)
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun AlphabetLayout(
+    themePalette: ImeThemePalette,
+    shiftState: ShiftState,
+    keyHeight: Dp,
+    onKeyChar: (String) -> Unit,
+    onBackspace: () -> Unit,
+    onShiftToggle: () -> Unit,
+    onModeChange: (KeyboardMode) -> Unit,
+    actionInfo: KeyAction,
+    onActionClick: () -> Unit,
+    onSpace: () -> Unit,
+    onSwitchIme: () -> Unit,
+    settings: KeyboardSettings
+) {
+    val isUpper = shiftState == ShiftState.SHIFT || shiftState == ShiftState.CAPS_LOCK
+
+    // Row 1: Q W E R T Y U I O P
+    val row1 = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        row1.forEach { char ->
+            val displayChar = if (isUpper) char.uppercase() else char
+            ImeKey(
+                label = displayChar,
+                themePalette = themePalette,
+                height = keyHeight,
+                modifier = Modifier.weight(1f),
+                onClick = { onKeyChar(displayChar) }
+            )
+        }
+    }
+
+    // Row 2: A S D F G H J K L
+    val row2 = listOf("a", "s", "d", "f", "g", "h", "j", "k", "l")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        row2.forEach { char ->
+            val displayChar = if (isUpper) char.uppercase() else char
+            ImeKey(
+                label = displayChar,
+                themePalette = themePalette,
+                height = keyHeight,
+                modifier = Modifier.weight(1f),
+                onClick = { onKeyChar(displayChar) }
+            )
+        }
+    }
+
+    // Row 3: Shift, Z X C V B N M, Backspace
+    val row3 = listOf("z", "x", "c", "v", "b", "n", "m")
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // SHIFT KEY
+        ImeSpecialKey(
+            icon = Icons.Default.KeyboardCapslock,
+            label = "Shift",
+            themePalette = themePalette,
+            height = keyHeight,
+            isActive = shiftState != ShiftState.OFF,
+            modifier = Modifier.weight(1.35f),
+            onClick = onShiftToggle
+        )
+
+        row3.forEach { char ->
+            val displayChar = if (isUpper) char.uppercase() else char
+            ImeKey(
+                label = displayChar,
+                themePalette = themePalette,
+                height = keyHeight,
+                modifier = Modifier.weight(1f),
+                onClick = { onKeyChar(displayChar) }
+            )
+        }
+
+        // BACKSPACE KEY
+        ImeSpecialKey(
+            icon = Icons.AutoMirrored.Filled.Backspace,
+            label = "Delete",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(1.35f),
+            onClick = onBackspace
+        )
+    }
+
+    // Row 4: ?123, Comma, Spacebar, Period, Enter/Action
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Mode switch to ?123
+        ImeSpecialKey(
+            label = "?123",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(1.3f),
+            onClick = { onModeChange(KeyboardMode.SYMBOLS) }
+        )
+
+        // Switch IME / Language Globe (if enabled in settings)
+        if (settings.showLanguageSwitchKey) {
+            ImeSpecialKey(
+                icon = Icons.Default.Language,
+                themePalette = themePalette,
+                height = keyHeight,
+                modifier = Modifier.weight(0.85f),
+                onClick = onSwitchIme
+            )
+        }
+
+        // Comma
+        ImeKey(
+            label = ",",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(0.9f),
+            onClick = { onKeyChar(",") }
+        )
+
+        // Spacebar
+        Box(
+            modifier = Modifier
+                .weight(if (settings.showLanguageSwitchKey) 3.6f else 4.4f)
+                .height(keyHeight)
+                .clip(RoundedCornerShape(6.dp))
+                .background(themePalette.keyBackground)
+                .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                .clickable { onSpace() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "English (US)",
+                style = TextStyle(
+                    color = themePalette.keySubtext.copy(alpha = 0.55f),
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            )
+        }
+
+        // Period
+        ImeKey(
+            label = ".",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(0.9f),
+            onClick = { onKeyChar(".") }
+        )
+
+        // Action / Enter
+        val actionIcon: ImageVector = when (actionInfo.actionId) {
+            android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH -> Icons.Default.Search
+            android.view.inputmethod.EditorInfo.IME_ACTION_SEND -> Icons.Default.Done
+            android.view.inputmethod.EditorInfo.IME_ACTION_DONE -> Icons.Default.Done
+            else -> Icons.Default.KeyboardReturn
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1.4f)
+                .height(keyHeight)
+                .clip(RoundedCornerShape(6.dp))
+                .background(themePalette.accentPrimary)
+                .clickable { onActionClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = actionIcon,
+                contentDescription = "Action",
+                tint = Color.White,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// SYMBOLS LAYOUT
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun SymbolsLayout(
+    themePalette: ImeThemePalette,
+    keyHeight: Dp,
+    onKeyChar: (String) -> Unit,
+    onBackspace: () -> Unit,
+    onModeChange: (KeyboardMode) -> Unit,
+    actionInfo: KeyAction,
+    onActionClick: () -> Unit,
+    onSpace: () -> Unit,
+    settings: KeyboardSettings
+) {
+    val row1 = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+    val row2 = listOf("@", "#", "$", "%", "&", "-", "+", "(", ")", "/")
+    val row3 = listOf("=", "*", "\"", "'", ":", ";", "!", "?")
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        row1.forEach { sym ->
+            ImeKey(label = sym, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { onKeyChar(sym) })
+        }
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        row2.forEach { sym ->
+            ImeKey(label = sym, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { onKeyChar(sym) })
+        }
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+        ImeSpecialKey(
+            label = "=\\<",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(1.35f),
+            onClick = { onModeChange(KeyboardMode.MORE_SYMBOLS) }
+        )
+
+        row3.forEach { sym ->
+            ImeKey(label = sym, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { onKeyChar(sym) })
+        }
+
+        ImeSpecialKey(
+            icon = Icons.AutoMirrored.Filled.Backspace,
+            label = "Delete",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(1.35f),
+            onClick = onBackspace
+        )
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+        ImeSpecialKey(
+            label = "ABC",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(1.3f),
+            onClick = { onModeChange(KeyboardMode.NORMAL_MODE) }
+        )
+
+        ImeKey(label = ",", themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(0.9f), onClick = { onKeyChar(",") })
+
+        Box(
+            modifier = Modifier
+                .weight(3.8f)
+                .height(keyHeight)
+                .clip(RoundedCornerShape(6.dp))
+                .background(themePalette.keyBackground)
+                .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                .clickable { onSpace() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Space", style = TextStyle(color = themePalette.keySubtext.copy(alpha = 0.5f), fontSize = 11.sp))
+        }
+
+        ImeKey(label = ".", themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(0.9f), onClick = { onKeyChar(".") })
+
+        Box(
+            modifier = Modifier
+                .weight(1.4f)
+                .height(keyHeight)
+                .clip(RoundedCornerShape(6.dp))
+                .background(themePalette.accentPrimary)
+                .clickable { onActionClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.KeyboardReturn, contentDescription = "Return", tint = Color.White, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// MORE SYMBOLS LAYOUT
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun MoreSymbolsLayout(
+    themePalette: ImeThemePalette,
+    keyHeight: Dp,
+    onKeyChar: (String) -> Unit,
+    onBackspace: () -> Unit,
+    onModeChange: (KeyboardMode) -> Unit,
+    actionInfo: KeyAction,
+    onActionClick: () -> Unit,
+    onSpace: () -> Unit,
+    settings: KeyboardSettings
+) {
+    val row1 = listOf("~", "`", "|", "•", "√", "π", "÷", "×", "¶", "∆")
+    val row2 = listOf("£", "¥", "€", "¢", "^", "°", "{", "}", "\\", "_")
+    val row3 = listOf("[", "]", "<", ">", "«", "»", "©", "®")
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        row1.forEach { sym ->
+            ImeKey(label = sym, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { onKeyChar(sym) })
+        }
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        row2.forEach { sym ->
+            ImeKey(label = sym, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { onKeyChar(sym) })
+        }
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+        ImeSpecialKey(
+            label = "?123",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(1.35f),
+            onClick = { onModeChange(KeyboardMode.SYMBOLS) }
+        )
+
+        row3.forEach { sym ->
+            ImeKey(label = sym, themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(1f), onClick = { onKeyChar(sym) })
+        }
+
+        ImeSpecialKey(
+            icon = Icons.AutoMirrored.Filled.Backspace,
+            label = "Delete",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(1.35f),
+            onClick = onBackspace
+        )
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+        ImeSpecialKey(
+            label = "ABC",
+            themePalette = themePalette,
+            height = keyHeight,
+            modifier = Modifier.weight(1.3f),
+            onClick = { onModeChange(KeyboardMode.NORMAL_MODE) }
+        )
+
+        ImeKey(label = "<", themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(0.9f), onClick = { onKeyChar("<") })
+
+        Box(
+            modifier = Modifier
+                .weight(3.8f)
+                .height(keyHeight)
+                .clip(RoundedCornerShape(6.dp))
+                .background(themePalette.keyBackground)
+                .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                .clickable { onSpace() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Space", style = TextStyle(color = themePalette.keySubtext.copy(alpha = 0.5f), fontSize = 11.sp))
+        }
+
+        ImeKey(label = ">", themePalette = themePalette, height = keyHeight, modifier = Modifier.weight(0.9f), onClick = { onKeyChar(">") })
+
+        Box(
+            modifier = Modifier
+                .weight(1.4f)
+                .height(keyHeight)
+                .clip(RoundedCornerShape(6.dp))
+                .background(themePalette.accentPrimary)
+                .clickable { onActionClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.KeyboardReturn, contentDescription = "Return", tint = Color.White, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// CORE REUSABLE KEY COMPOSABLES
+// -----------------------------------------------------------------------------
 
 @Composable
 fun ImeKey(
@@ -1110,8 +1502,8 @@ fun ImeKey(
             .height(height)
             .clip(RoundedCornerShape(6.dp))
             .background(themePalette.keyBackground)
-            .border(0.5.dp, themePalette.border.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-        .clickable { onClick() },
+            .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -1141,7 +1533,7 @@ fun ImeSpecialKey(
             .height(height)
             .clip(RoundedCornerShape(6.dp))
             .background(if (isActive) themePalette.accentPrimary else themePalette.specialKeyBackground)
-            .border(0.5.dp, themePalette.border.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+            .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -1166,6 +1558,10 @@ fun ImeSpecialKey(
     }
 }
 
+// -----------------------------------------------------------------------------
+// EXPANDED EMOJI PANEL
+// -----------------------------------------------------------------------------
+
 @Composable
 fun EmojiKeyboardPanel(
     themePalette: ImeThemePalette,
@@ -1184,17 +1580,13 @@ fun EmojiKeyboardPanel(
             "Hearts" to listOf("❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❤️‍🔥", "❤️‍🩹", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "💌", "💋", "💯", "💢", "💥", "💫", "💦", "💨", "🕳️", "💬", "🗨️", "🗯️", "💭", "💤"),
             "Animals" to listOf("🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐻‍❄️", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐔", "🐧", "🐦", "🐤", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🪱", "🐛", "🦋", "🐌", "🐞", "🐜", "🪰", "🪲", "🪳", "🦟", "🦗", "🕷️", "🕸️", "🦂", "🐢", "🐍", "🦎", "🦖", "🦕", "🐙", "🦑", "🦐", "🦞", "🦀", "🐡", "🐠", "🐟", "🐬", "🐳", "🐋", "🦈", "🦭", "🐊", "🐅", "🐆", "🦓", "🦍", "🦧", "🦣", "🐘", "🦛", "🦏", "🐪", "🐫", "🦒", "🦘", "🦬", "🐃", "🐂", "🐄", "🐎", "🐖", "🐏", "🐑", "🦙", "🐐", "🦌", "🐕", "🐩", "🦮", "🐕‍🦺", "🐈", "🐈‍⬛", "🪶", "🐓", "🦃", "🦤", "🦚", "🦜", "🦢", "🦩", "🕊️"),
             "Food" to listOf("🍏", "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🍆", "🥑", "🥦", "🥬", "🥒", "🌶️", "🫑", "🌽", "🥕", "🫒", "🧄", "🧅", "🥔", "🍠", "🥐", "🥯", "🍞", "🥖", "🥨", "🧀", "🥚", "🍳", "🧈", "🥞", "🧇", "🥓", "🥩", "🍗", "🍖", "🦴", "🌭", "🍔", "🍟", "🍕", "🫓", "🥪", "🥙", "🧆", "🌮", "🌯", "🫔", "🥗", "🥘", "🫕", "🥫", "🍝", "🍜", "🍲", "🍛", "🍣", "🍱", "🥟", "🦪", "🍤", "🍙", "🍚", "🍘", "🍥", "🥠", "🥮", "🍢", "🍡", "🍧", "🍨", "🍦", "🥧", "🧁", "🍰", "🎂", "🍮", "🍭", "🍬", "🍫", "🍿", "🍩", "🍪", "🌰", "🥜", "🍯", "🥛", "🍼", "☕", "🫖", "🍵", "🧃", "🥤", "🧋", "🍶", "🍺", "🍻", "🥂", "🍷", "🥃", "🍸", "🍹", "🧉", "🍾", "🧊"),
-            "Objects" to listOf("⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂", "🏋️‍♀️", "🏋️‍♂️", "🤼‍♀️", "🤼‍♂️", "🤸‍♀️", "🤸‍♂️", "⛹️‍♀️", "⛹️‍♂️", "🤺", "🤾‍♀️", "🤾‍♂️", "🏌️‍♀️", "🏌️‍♂️", "🏇", "🧘‍♀️", "🧘‍♂️", "🏄‍♀️", "🏄‍♂️", "🏊‍♀️", "🏊‍♂️", "🤽‍♀️", "🤽‍♂️", "🚣‍♀️", "🚣‍♂️", "🧗‍♀️", "🧗‍♂️", "🚵‍♀️", "🚵‍♂️", "🚴‍♀️", "🚴‍♂️", "🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🏵️", "🎗️", "🎫", "🎟️", "🎪", "🤹", "🎭", "🩰", "🎨", "🎬", "🎤", "🎧", "🎼", "🎹", "🥁", "🪘", "🎷", "🎺", "🪗", "🎸", "🪕", "🎻", "🎲", "♟️", "🎯", "🎳", "🎮", "🎰", "🧩")
+            "Objects" to listOf("⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏐", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂", "🏋️‍♀️", "🏋️‍♂️", "🤼‍♀️", "🤼‍♂️", "🤸‍♀️", "🤸‍♂️", "⛹️‍♀️", "⛹️‍♂️", "🤺", "🤾‍♀️", "🤾‍♂️", "🏌️‍♀️", "🏌️‍♂️", "🏇", "🧘‍♀️", "🧘‍♂️", "🏄‍♀️", "🏄‍♂️", "🏊‍♀️", "🏊‍♂️", "🤽‍♀️", "🤽‍♂️", "🚣‍♀️", "🚣‍♂️", "🧗‍♀️", "🧗‍♂️", "🚵‍♀️", "🚵‍♂️", "🚴‍♀️", "🚴‍♂️", "🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🏵️", "🎗️", "🎫", "🎟️", "🎪", "🤹", "🎭", "🩰", "🎨", "🎬", "🎤", "🎧", "🎼", "🎹", "🥁", "🪘", "🎷", "🎺", "🪗", "🎸", "🪕", "🎻", "🎲", "♟️", "🎯", "🎳", "🎮", "🎰", "🧩")
         )
     }
 
     val displayList = remember(selectedCategory, searchQuery, recentEmojis) {
         if (searchQuery.isNotBlank()) {
-            val q = searchQuery.trim().lowercase()
-            allEmojis.values.flatten().distinct().filter { emoji ->
-                // Basic match
-                true
-            }.take(40)
+            allEmojis.values.flatten().distinct().take(48)
         } else if (selectedCategory == "Recents") {
             if (recentEmojis.isNotEmpty()) recentEmojis else listOf("😀", "❤️", "🔥", "👍", "✨", "🚀", "🎉", "🙏")
         } else {
@@ -1205,14 +1597,14 @@ fun EmojiKeyboardPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp)
+            .height(260.dp)
             .padding(horizontal = 4.dp, vertical = 2.dp)
     ) {
-        // TOP HEADER
+        // Top Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp),
+                .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -1238,7 +1630,7 @@ fun EmojiKeyboardPanel(
                     .height(32.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(themePalette.keyBackground)
-                    .border(0.5.dp, themePalette.border.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                    .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1250,7 +1642,7 @@ fun EmojiKeyboardPanel(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (searchQuery.isEmpty()) "Search emojis..." else searchQuery,
+                    text = if (searchQuery.isEmpty()) "Search expressive emojis..." else searchQuery,
                     style = TextStyle(
                         color = if (searchQuery.isEmpty()) themePalette.keySubtext.copy(alpha = 0.6f) else themePalette.keyText,
                         fontSize = 11.5.sp
@@ -1270,12 +1662,12 @@ fun EmojiKeyboardPanel(
             }
         }
 
-        // CATEGORY CHIPS
+        // Category Chips
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(vertical = 3.dp),
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             val categories = listOf("Recents", "Smileys", "Gestures", "Hearts", "Animals", "Food", "Objects")
@@ -1289,39 +1681,45 @@ fun EmojiKeyboardPanel(
                             selectedCategory = cat
                             if (searchQuery.isNotEmpty()) onQueryChange("")
                         }
-                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = cat,
                         color = if (isSelected) Color.White else themePalette.keySubtext,
-                        fontSize = 10.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                        fontSize = 10.5.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
         }
 
-        // EMOJI GRID
+        // Emoji Grid
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
-            modifier = Modifier.fillMaxWidth().height(100.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             items(displayList) { emoji ->
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .clickable { onSelectEmoji(emoji) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = emoji, fontSize = 20.sp)
+                    Text(text = emoji, fontSize = 22.sp)
                 }
             }
         }
     }
 }
+
+// -----------------------------------------------------------------------------
+// IN-PLACE PANELS: CLIPBOARD, TRANSLATION, TEXT EDITING, THEMES, WRITING ASSISTANT
+// -----------------------------------------------------------------------------
 
 @Composable
 fun ClipboardPanel(
@@ -1354,13 +1752,13 @@ fun ClipboardPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp)
+            .height(230.dp)
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp),
+                .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -1376,7 +1774,12 @@ fun ClipboardPanel(
                         .clickable { onBackToAlpha() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = themePalette.keyText, modifier = Modifier.size(15.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = themePalette.keyText,
+                        modifier = Modifier.size(15.dp)
+                    )
                 }
                 Text("Clipboard History", style = MaterialTheme.typography.titleSmall.copy(color = themePalette.keyText, fontWeight = FontWeight.Bold, fontSize = 13.sp))
             }
@@ -1384,24 +1787,27 @@ fun ClipboardPanel(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            modifier = Modifier.fillMaxWidth().height(120.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(clips) { clip ->
                 Box(
                     modifier = Modifier
-                        .height(50.dp)
+                        .height(60.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(themePalette.keyBackground)
-                        .border(0.5.dp, themePalette.border.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                        .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
                         .clickable { onSelectClip(clip) }
-                        .padding(6.dp)
+                        .padding(8.dp)
                 ) {
                     Text(
                         text = clip,
-                        style = TextStyle(color = themePalette.keyText, fontSize = 11.sp),
-                        maxLines = 2
+                        style = TextStyle(color = themePalette.keyText, fontSize = 11.5.sp),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -1417,7 +1823,6 @@ fun TranslationPanel(
     onInsertTranslation: (String) -> Unit,
     onBackToAlpha: () -> Unit
 ) {
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var targetLanguage by remember { mutableStateOf("Spanish") }
     var translatedOutput by remember { mutableStateOf("") }
@@ -1434,20 +1839,22 @@ fun TranslationPanel(
                 targetLanguage = targetLanguage
             )
             isTranslating = false
-            res.onSuccess { translatedOutput = it.trim() }
+            if (res.isSuccess) {
+                translatedOutput = res.getOrNull()?.trim().orEmpty()
+            }
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp)
+            .height(230.dp)
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp),
+                .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -1473,21 +1880,21 @@ fun TranslationPanel(
                     .clip(RoundedCornerShape(6.dp))
                     .background(themePalette.accentPrimary)
                     .clickable { runTranslate() }
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
-                Text("Translate", color = Color.White, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                Text("Translate", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
 
-        // TARGET LANGUAGE SELECTOR
+        // Target language chips
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(vertical = 2.dp),
+                .padding(vertical = 3.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            val languages = listOf("Spanish", "French", "German", "Japanese", "Chinese", "Hindi", "Arabic", "Portuguese")
+            val languages = listOf("Spanish", "French", "German", "Japanese", "Chinese", "Hindi", "Arabic", "Portuguese", "Italian", "Korean")
             languages.forEach { lang ->
                 val isSelected = targetLanguage == lang
                 Box(
@@ -1495,42 +1902,42 @@ fun TranslationPanel(
                         .clip(RoundedCornerShape(6.dp))
                         .background(if (isSelected) themePalette.accentPrimary else themePalette.keyBackgroundPressed)
                         .clickable { targetLanguage = lang }
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    Text(lang, color = if (isSelected) Color.White else themePalette.keySubtext, fontSize = 9.5.sp)
+                    Text(lang, color = if (isSelected) Color.White else themePalette.keySubtext, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
 
-        // PREVIEW / RESULT
+        // Preview Box
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
                 .background(themePalette.keyBackground)
-                .border(0.5.dp, themePalette.border.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                .padding(6.dp)
+                .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .padding(8.dp)
         ) {
             if (translatedOutput.isNotEmpty()) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(translatedOutput, color = themePalette.keyText, fontSize = 11.5.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(translatedOutput, color = themePalette.keyText, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(5.dp))
                             .background(themePalette.accentPrimary)
                             .clickable { onInsertTranslation(translatedOutput) }
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text("Insert Translation", color = Color.White, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                        Text("Insert Translation", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
                 Text(
-                    text = if (inputText.isEmpty()) "Type text on keyboard to translate to $targetLanguage..." else "Input: $inputText",
+                    text = if (inputText.isEmpty()) "Type text or input sentence to translate into $targetLanguage..." else "Input: $inputText",
                     color = if (inputText.isEmpty()) themePalette.keySubtext.copy(alpha = 0.6f) else themePalette.keyText,
-                    fontSize = 11.sp
+                    fontSize = 11.5.sp
                 )
             }
         }
@@ -1551,13 +1958,13 @@ fun TextEditingPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp)
+            .height(230.dp)
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp),
+                .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -1575,64 +1982,62 @@ fun TextEditingPanel(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = themePalette.keyText, modifier = Modifier.size(15.dp))
                 }
-                Text("Text Editing & Cursor", style = MaterialTheme.typography.titleSmall.copy(color = themePalette.keyText, fontWeight = FontWeight.Bold, fontSize = 13.sp))
+                Text("Text Editing & Cursor Navigation", style = MaterialTheme.typography.titleSmall.copy(color = themePalette.keyText, fontWeight = FontWeight.Bold, fontSize = 13.sp))
             }
         }
 
-        // CONTROLS GRID: D-Pad & Actions
         Row(
-            modifier = Modifier.fillMaxWidth().height(120.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ACTION BUTTONS (Select All, Copy, Cut, Paste, Undo)
+            // Action Buttons
             Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.weight(1.1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(modifier = Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onSelectAll() }, contentAlignment = Alignment.Center) {
-                        Text("Select All", fontSize = 10.sp, color = themePalette.keyText)
+                    Box(modifier = Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onSelectAll() }, contentAlignment = Alignment.Center) {
+                        Text("Select All", fontSize = 11.sp, color = themePalette.keyText, fontWeight = FontWeight.Medium)
                     }
-                    Box(modifier = Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onCopy() }, contentAlignment = Alignment.Center) {
-                        Text("Copy", fontSize = 10.sp, color = themePalette.keyText)
+                    Box(modifier = Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onCopy() }, contentAlignment = Alignment.Center) {
+                        Text("Copy", fontSize = 11.sp, color = themePalette.keyText, fontWeight = FontWeight.Medium)
                     }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(modifier = Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onCut() }, contentAlignment = Alignment.Center) {
-                        Text("Cut", fontSize = 10.sp, color = themePalette.keyText)
+                    Box(modifier = Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onCut() }, contentAlignment = Alignment.Center) {
+                        Text("Cut", fontSize = 11.sp, color = themePalette.keyText, fontWeight = FontWeight.Medium)
                     }
-                    Box(modifier = Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onPaste() }, contentAlignment = Alignment.Center) {
-                        Text("Paste", fontSize = 10.sp, color = themePalette.keyText)
+                    Box(modifier = Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onPaste() }, contentAlignment = Alignment.Center) {
+                        Text("Paste", fontSize = 11.sp, color = themePalette.keyText, fontWeight = FontWeight.Medium)
                     }
                 }
-                Box(modifier = Modifier.fillMaxWidth().height(28.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackgroundPressed).clickable { onUndo() }, contentAlignment = Alignment.Center) {
-                    Text("Undo", fontSize = 10.sp, color = themePalette.keySubtext)
+                Box(modifier = Modifier.fillMaxWidth().height(34.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackgroundPressed).clickable { onUndo() }, contentAlignment = Alignment.Center) {
+                    Text("Undo", fontSize = 11.sp, color = themePalette.keySubtext)
                 }
             }
 
-            // D-PAD
+            // D-Pad
             Column(
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                // UP
-                Box(modifier = Modifier.size(34.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onDpadMove(KeyEvent.KEYCODE_DPAD_UP) }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Up", tint = themePalette.keyText, modifier = Modifier.size(18.dp))
+                Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(themePalette.keyBackground).clickable { onDpadMove(KeyEvent.KEYCODE_DPAD_UP) }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Up", tint = themePalette.keyText, modifier = Modifier.size(20.dp))
                 }
-                // LEFT / RIGHT
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(modifier = Modifier.size(34.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onDpadMove(KeyEvent.KEYCODE_DPAD_LEFT) }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left", tint = themePalette.keyText, modifier = Modifier.size(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(themePalette.keyBackground).clickable { onDpadMove(KeyEvent.KEYCODE_DPAD_LEFT) }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left", tint = themePalette.keyText, modifier = Modifier.size(20.dp))
                     }
-                    Box(modifier = Modifier.size(34.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onDpadMove(KeyEvent.KEYCODE_DPAD_RIGHT) }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right", tint = themePalette.keyText, modifier = Modifier.size(18.dp))
+                    Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(themePalette.keyBackground).clickable { onDpadMove(KeyEvent.KEYCODE_DPAD_RIGHT) }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right", tint = themePalette.keyText, modifier = Modifier.size(20.dp))
                     }
                 }
-                // DOWN
-                Box(modifier = Modifier.size(34.dp).clip(RoundedCornerShape(6.dp)).background(themePalette.keyBackground).clickable { onDpadMove(KeyEvent.KEYCODE_DPAD_DOWN) }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Down", tint = themePalette.keyText, modifier = Modifier.size(18.dp))
+                Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(themePalette.keyBackground).clickable { onDpadMove(KeyEvent.KEYCODE_DPAD_DOWN) }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Down", tint = themePalette.keyText, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -1646,25 +2051,16 @@ fun ThemesPanel(
     onSelectTheme: (String) -> Unit,
     onBackToAlpha: () -> Unit
 ) {
-    val themes = listOf(
-        Pair("dynamic", "Dynamic Color"),
-        Pair("midnight_bloom", "Midnight Amethyst"),
-        Pair("cyber_teal", "Emerald Slate"),
-        Pair("titanium_dark", "Titanium OLED"),
-        Pair("minimalist", "Pristine Light"),
-        Pair("warm_sand", "Warm Sand")
-    )
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp)
+            .height(230.dp)
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp),
+                .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -1682,35 +2078,49 @@ fun ThemesPanel(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = themePalette.keyText, modifier = Modifier.size(15.dp))
                 }
-                Text("Keyboard Themes", style = MaterialTheme.typography.titleSmall.copy(color = themePalette.keyText, fontWeight = FontWeight.Bold, fontSize = 13.sp))
+                Text("Keyboard Themes & Styles", style = MaterialTheme.typography.titleSmall.copy(color = themePalette.keyText, fontWeight = FontWeight.Bold, fontSize = 13.sp))
             }
         }
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
-            modifier = Modifier.fillMaxWidth().height(120.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            items(themes) { (id, name) ->
-                val isSelected = selectedThemeId == id
+            items(KeyboardThemePalette.ALL_THEMES) { themeItem ->
+                val isSelected = selectedThemeId == themeItem.id
                 Box(
                     modifier = Modifier
-                        .height(44.dp)
+                        .height(52.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(if (isSelected) themePalette.accentPrimary else themePalette.keyBackground)
-                        .border(0.5.dp, themePalette.border.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                        .clickable { onSelectTheme(id) }
+                        .border(
+                            width = if (isSelected) 1.5.dp else 0.5.dp,
+                            color = if (isSelected) Color.White else themePalette.border.copy(alpha = 0.35f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .clickable { onSelectTheme(themeItem.id) }
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = name,
-                        color = if (isSelected) Color.White else themePalette.keyText,
-                        fontSize = 10.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        textAlign = TextAlign.Center
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = themeItem.name,
+                            color = if (isSelected) Color.White else themePalette.keyText,
+                            fontSize = 10.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = themeItem.styleCategory,
+                            color = if (isSelected) Color.White.copy(alpha = 0.8f) else themePalette.keySubtext,
+                            fontSize = 8.5.sp
+                        )
+                    }
                 }
             }
         }
@@ -1724,7 +2134,6 @@ fun WritingAssistantPanel(
     onReplaceText: (String, Int) -> Unit,
     onBackToAlpha: () -> Unit
 ) {
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isProcessing by remember { mutableStateOf(false) }
     var activeOutput by remember { mutableStateOf<String?>(null) }
@@ -1743,7 +2152,9 @@ fun WritingAssistantPanel(
                 tone = tone
             )
             isProcessing = false
-            res.onSuccess { activeOutput = it.trim() }
+            if (res.isSuccess) {
+                activeOutput = res.getOrNull()?.trim()
+            }
         }
     }
 
@@ -1760,20 +2171,22 @@ fun WritingAssistantPanel(
                 tone = ToneOption.CONCISE
             )
             isProcessing = false
-            res.onSuccess { activeOutput = it.trim() }
+            if (res.isSuccess) {
+                activeOutput = res.getOrNull()?.trim()
+            }
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp)
+            .height(230.dp)
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp),
+                .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -1791,16 +2204,16 @@ fun WritingAssistantPanel(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = themePalette.keyText, modifier = Modifier.size(15.dp))
                 }
-                Text("Writing Assistant", style = MaterialTheme.typography.titleSmall.copy(color = themePalette.keyText, fontWeight = FontWeight.Bold, fontSize = 13.sp))
+                Text("Writing Tone & Grammar Assistant", style = MaterialTheme.typography.titleSmall.copy(color = themePalette.keyText, fontWeight = FontWeight.Bold, fontSize = 13.sp))
             }
         }
 
-        // QUICK TONE REWRITE PILLS
+        // Tone quick pills
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(vertical = 2.dp),
+                .padding(vertical = 3.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Box(
@@ -1808,9 +2221,9 @@ fun WritingAssistantPanel(
                     .clip(RoundedCornerShape(6.dp))
                     .background(themePalette.accentPrimary)
                     .clickable { runFixGrammar() }
-                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Text("Fix Grammar", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("Fix Grammar", color = Color.White, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
             }
 
             ToneOption.entries.forEach { tone ->
@@ -1819,44 +2232,44 @@ fun WritingAssistantPanel(
                         .clip(RoundedCornerShape(6.dp))
                         .background(themePalette.keyBackgroundPressed)
                         .clickable { runTone(tone) }
-                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Text(tone.label, color = themePalette.keyText, fontSize = 10.sp)
+                    Text(tone.label, color = themePalette.keyText, fontSize = 10.5.sp)
                 }
             }
         }
 
-        // PREVIEW / RESULT
+        // Preview Box
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
                 .background(themePalette.keyBackground)
-                .border(0.5.dp, themePalette.border.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                .padding(6.dp)
+                .border(0.5.dp, themePalette.border.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .padding(8.dp)
         ) {
             if (activeOutput != null) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(activeOutput ?: "", color = themePalette.keyText, fontSize = 11.5.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(activeOutput ?: "", color = themePalette.keyText, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(5.dp))
                             .background(themePalette.accentPrimary)
                             .clickable {
                                 activeOutput?.let { onReplaceText(it, fetchedLength) }
                             }
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text("Replace App Text", color = Color.White, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                        Text("Replace App Text", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
                 Text(
-                    text = if (isProcessing) "Refining text with Gemini AI..." else "Select an action above to enhance the active text in your app.",
+                    text = if (isProcessing) "Refining text with Gemini AI..." else "Tap 'Fix Grammar' or any Tone option to rephrase the active text in your app.",
                     color = themePalette.keySubtext,
-                    fontSize = 11.sp
+                    fontSize = 11.5.sp
                 )
             }
         }

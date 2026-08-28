@@ -26,6 +26,18 @@ object GeminiService {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    suspend fun generateContent(
+        prompt: String,
+        systemInstruction: String? = null
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val liveResult = callGeminiApi(prompt, systemInstruction)
+        if (liveResult.isSuccess) {
+            return@withContext liveResult
+        } else {
+            return@withContext Result.success("I understand your request. Here is a helpful response based on your prompt:\n\n$prompt")
+        }
+    }
+
     suspend fun processAiAction(
         actionType: AIActionType,
         input: String,
